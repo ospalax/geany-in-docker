@@ -1,0 +1,182 @@
+#
+# Copyright (2019) Petr Ospalý <petr@ospalax.cz>
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+
+ARG ALPINE_VERSION=3.10
+#ARG USERNAME=osp
+#ARG USERGROUP=osp
+#ARG USER_UID=1000
+#ARG USER_GID=1000
+
+FROM alpine:${ALPINE_VERSION}
+LABEL maintainer="Petr Ospalý (osp) <petr@ospalax.cz>"
+
+ARG USERNAME
+ARG USERGROUP
+ARG USER_UID
+ARG USER_GID
+
+# install geany packages
+RUN \
+    apk update \
+    && \
+    apk add --no-cache \
+    geany \
+    geany-lang \
+    geany-doc \
+    geany-plugins \
+    geany-plugins-tableconvert \
+    geany-plugins-lineoperations \
+    geany-plugins-utils \
+    geany-plugins-geanyinsertnum \
+    geany-plugins-treebrowser \
+    geany-plugins-codenav \
+    geany-plugins-pairtaghighlighter \
+    geany-plugins-sendmail \
+    geany-plugins-projectorganizer \
+    geany-plugins-geanyprj \
+    geany-plugins-geanymacro \
+    geany-plugins-autoclose \
+    geany-plugins-defineformat \
+    geany-plugins-shiftcolumn \
+    geany-plugins-geanylua \
+    geany-plugins-doc \
+    geany-plugins-xmlsnippets \
+    geany-plugins-latex \
+    geany-plugins-workbench \
+    geany-plugins-updatechecker \
+    geany-plugins-lipsum \
+    geany-plugins-geanynumberedbookmarks \
+    geany-plugins-automark \
+    geany-plugins-geniuspaste \
+    geany-plugins-commander \
+    geany-plugins-dev \
+    geany-plugins-geanyvc \
+    geany-plugins-vimode \
+    geany-plugins-keyrecord \
+    geany-plugins-geanyctags \
+    geany-plugins-geanydoc \
+    geany-plugins-geanypg \
+    geany-plugins-overview \
+    geany-plugins-geanyextrasel \
+    geany-plugins-pretty-printer \
+    geany-plugins-geanyminiscript \
+    geany-plugins-addons \
+    geany-plugins-pohelper \
+    geany-plugins-spellcheck \
+    geany-plugins-lang \
+    && \
+    rm -rf /var/cache/apk/*
+
+# dictionaries
+RUN \
+    apk update \
+    && \
+    apk add --no-cache \
+    hunspell-en \
+    && \
+    rm -rf /var/cache/apk/*
+
+COPY dicts/*aff /usr/share/hunspell/
+COPY dicts/*dic /usr/share/hunspell/
+
+# IMPORTANT: GTK settings cannot be set from within the container...
+#
+# Even if I set both gtk2 and gtk3 or setup GTK_THEME variable - it is always
+# using my host system settings (you can compare gtk-query-settings inside and
+# outside of the container) - maybe there is a way how to do it - I did not
+# find any...
+#
+# That means that either you must have your host themes, icons and fonts all
+# installed inside the container or just simply mount them like this:
+#     /usr/share/icons/:/usr/share/icons/:ro
+#     /usr/share/themes/:/usr/share/themes/:ro
+#     /usr/share/fonts/:/usr/share/fonts/:ro
+#
+# gtk stuff
+#RUN \
+#    apk update \
+#    && \
+#    apk add --no-cache \
+#    faenza-icon-theme-geany \
+#    gtk-engines \
+#    gtk-update-icon-cache \
+#    greybird-themes \
+#    libcanberra \
+#    && \
+#    rm -rf /var/cache/apk/*
+#
+## fo fixing up icon indices...
+#RUN for i in /usr/share/icons/*; do \
+#        echo "update icon cache in: ${i}" ; \
+#        gtk-update-icon-cache --ignore-theme-index "${i}"; \
+#    done
+
+# IMPORTANT: Fonts are mounted from host and because gtk settings cannot be
+# changed (read above) then fonts would also have to be exactly the same as on
+# the host. Therefore I am saving some space here and skipping setting up the
+# fonts even though the current setup would be enough for me.
+#
+# font stuff
+#RUN \
+#    apk update \
+#    && \
+#    apk add --no-cache \
+#    ttf-freefont \
+#    ttf-dejavu \
+#    ttf-liberation \
+#    ttf-ubuntu-font-family \
+#    ttf-cantarell \
+#    ttf-opensans \
+#    ttf-droid \
+#    ttf-droid-nonlatin \
+#    font-noto \
+#    msttcorefonts-installer \
+#    && \
+#    rm -rf /var/cache/apk/*
+#
+#COPY ttf-fira /usr/share/fonts/
+#RUN update-ms-fonts
+#RUN fc-cache -vf
+
+#
+# setup user
+#
+
+# create myself
+RUN addgroup -g ${USER_GID} ${USERGROUP}
+RUN adduser -DH -G ${USERGROUP} -u ${USER_UID} ${USERNAME}
+
+# run geany in docker
+WORKDIR /home/${USERNAME}
+
+# IMPORTANT: As described above - GTK cannot be changed from within container.
+# So I am skipping this...
+#
+# setup gtk
+#COPY gtk-2.0-rc .gtkrc-2.0
+#RUN mkdir -p .config/gtk-3.0
+#COPY gtk-3.0-settings.ini .config/gtk-3.0/settings.ini
+
+RUN chown -R ${USERNAME}:${USERGROUP} .
+
+#
+# geany's entrypoint
+#
+
+# copy default config
+COPY geany-config /opt/geany-config
+
+# setup entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod 0755 /entrypoint.sh
+
+# we will run geany as ourselves...
+USER ${USERNAME}
+
+# geany in docker...
+ENTRYPOINT ["/entrypoint.sh"]
