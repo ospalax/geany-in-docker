@@ -14,7 +14,7 @@ My intentions were to build it from source but because Alpine already have packa
 
 ## Usage
 
-** You must have [`docker`](https://docker.com) installed (or its alternative like `podman`).**
+**You must have [`docker`](https://docker.com) installed (or its alternative like `podman`).**
 
 If your system needs root's privilege to run docker then do this:
 
