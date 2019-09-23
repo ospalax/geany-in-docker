@@ -29,7 +29,7 @@ DATETIME_TEMPLATE="%d.%m.%Y %H:%M:%S %Z"
 XSOCK=/tmp/.X11-unix
 DOCKER_IMAGE=geany-in-docker
 
-docker run --rm -it \
+docker run --rm -it -d \
     -v $XSOCK:$XSOCK \
     -e DISPLAY \
     -e PROJECT_FILE_PATH="$PROJECT_FILE_PATH" \
